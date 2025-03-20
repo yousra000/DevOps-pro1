@@ -18,14 +18,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
       - name: setup Terraform
         uses: hashicorp/setup-terraform@v1
         with:
+          terraform_version: "1.0.0"  # Specify the Terraform version you want
           terraform_wrapper: false
+
+      - name: Verify Terraform installation
+        run: terraform --version  # Check if Terraform is properly installed
+
       - name: Terraform init 
         id: init
-        run: Terraform init -backend-config="bucket=$engys-bucket" -backend-config="region=us-east-1"
+        run: terraform init -backend-config="bucket=$TF_STATE_BUCKET_NAME" -backend-config="region=us-east-1"
         working-directory: ./terraform
+
       - name: Terraform plan 
         id: plan
         run: |-
@@ -36,8 +43,8 @@ jobs:
           -var="key_name=deployer-key" \
           -out=PLAN
         working-directory: ./terraform
+
       - name: Terraform apply
         id: apply 
         run: terraform apply PLAN
         working-directory: ./terraform
-
