@@ -16,22 +16,33 @@ provider "aws" {
 }
 
 resource "aws_instance" "ec2" {
-  ami = "ami-08b5b3a93ed654d19"
-  instance_type = "t2.micro"
-  key_name = aws_key_pair.deployer.key_name
+  ami             = "ami-08b5b3a93ed654d19"
+  instance_type   = "t2.micro"
+  key_name        = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.maingroub.id]
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  subnet_id       = aws_subnet.subnet.id  # Associate the EC2 instance with the subnet
+
   connection {
-    type = "ssh"
-    host = self.public_ip
-    user = "ec2-user"
+    type        = "ssh"
+    host        = self.public_ip
+    user        = "ec2-user"
     private_key = var.private_key
-    timeout = "4m"
+    timeout     = "4m"
   }
+
   tags = {
     "name" = "DeployVM"
   }
 }
+
+
+resource "aws_subnet" "subnet" {
+  vpc_id     = "vpc-0a1b42e2b986119aa"  # Make sure this is your VPC ID
+  cidr_block = "10.0.1.0/24"  # Adjust the CIDR block as needed
+  availability_zone = "us-east-1a"  # Adjust to your region's AZ
+  map_public_ip_on_launch = true  # Ensure the instance gets a public IP
+}
+
 
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "ec2_profile"
