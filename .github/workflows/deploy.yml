@@ -16,7 +16,7 @@ jobs:
   deploy-infra:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkoutt
+      - name: Checkout
         uses: actions/checkout@v2
       - name: setup Terraform
         uses: hashicorp/setup-terraform@v1
