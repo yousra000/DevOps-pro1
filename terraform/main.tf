@@ -44,7 +44,9 @@ resource "aws_instance" "ec2" {
   instance_type         = "t2.micro"
   key_name              = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.maingroub.id]
-  subnet_id             = aws_subnet.public_subnet[count.index].id  # Associate the EC2 instance with the subnet (public)
+  
+  # Select a subnet from the public subnets created above using element
+  subnet_id             = element(aws_subnet.public_subnet.*.id, 0)  # Select the first public subnet (index 0)
 
   connection {
     type        = "ssh"
