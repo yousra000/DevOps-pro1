@@ -15,6 +15,8 @@ env:
 jobs:
   deploy-infra:
     runs-on: ubuntu-latest
+    outputs:
+      SERVER_PUBLIC_IP: ${{ steps.set_ip.outputs.instance_public_ip}}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -26,7 +28,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Verify Terraform installation
-        run: terraform --version  # Check if Terraform is properly installed
+        run: terraform --version 
 
       - name: Terraform init 
         id: init
@@ -48,3 +50,49 @@ jobs:
         id: apply 
         run: terraform apply PLAN
         working-directory: ./terraform
+
+      - name: Set output
+        id: set_ip
+        run: |-
+          echo "::set-output name=instance_public_ip::$(terraform output instance_public_ip)"
+
+  deploy-app:
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set IP env var
+        run: echo SERVER_PUBLIC_IP=${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }} >> $GITHUB_ENV
+      - name: login to ecr
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build, push docker image
+        env:
+          REGISTRY: ${{steps.login-ecr.outputs.registry}}
+          REPOSITORY: exapmle-node-app
+          IMAGE-TAG: ${{github.sha}}
+        run: |-
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE-TAG .
+          docker push -t $REGISTRY/$REPOSITORY:$IMAGE-TAG 
+      - name: Deploy docker image to ec2
+        env:
+          REGISTRY: ${{steps.login-ecr.outputs.registry}}
+          REPOSITORY: exapmle-node-app
+          IMAGE-TAG: ${{github.sha}}
+          AWS_DEFAULT_REGION: us-east-1
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.SERVER_PUBLIC_IP}}
+          username: ubuntu
+          key: ${{env.SSH_KEY_PRIVATE}}
+          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE-TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
+          scripts: |-
+            sudo apt update
+            sudo apt install docker.io -y
+            sudo apt install awscli -y
+            sudo ${aws ecr get-login --no-include-email --region us-east-1};
+            sudo docker stop myappcontainer || true
+            sudo docker rm myappcontainer || true
+            sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE-TAG 
+            sudo docker run -d --name myaoocontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE-TAG 
