@@ -81,7 +81,7 @@ jobs:
       - name: Deploy docker image to ec2
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: example-node-app  # Fixed typo
+          REPOSITORY: devops-pro1
           IMAGE: latest
           AWS_DEFAULT_REGION: us-east-1
         uses: appleboy/ssh-action@master
