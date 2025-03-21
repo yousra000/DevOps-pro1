@@ -72,7 +72,7 @@ jobs:
       - name: Build, push docker image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: example-node-app
+          REPOSITORY: DevOps-pro1 
           IMAGE: latest
         run: |-
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE ./node-app
