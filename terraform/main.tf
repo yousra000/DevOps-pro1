@@ -38,7 +38,7 @@ resource "aws_instance" "ec2" {
 
 resource "aws_subnet" "subnet" {
   vpc_id     = "vpc-0a1b42e2b986119aa"  # Make sure this is your VPC ID
-  cidr_block = "10.0.2.0/24"  # Adjust the CIDR block as needed
+  cidr_block = "10.0.4.0/24"  # Adjust the CIDR block as needed
   availability_zone = "us-east-1a"  # Adjust to your region's AZ
   map_public_ip_on_launch = true  # Ensure the instance gets a public IP
 }
