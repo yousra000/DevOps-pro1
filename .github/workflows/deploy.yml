@@ -24,7 +24,7 @@ jobs:
       - name: setup Terraform
         uses: hashicorp/setup-terraform@v1
         with:
-          terraform_version: "1.0.0"  # Specify the Terraform version you want
+          terraform_version: "1.0.0"
           terraform_wrapper: false
 
       - name: Verify Terraform installation
@@ -63,10 +63,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Set IMAGE-TAG variable
-        run: echo "IMAGE-TAG=${{ github.sha }}" >> $GITHUB_ENV
+        run: echo "IMAGE-TAG=${{ github.sha || 'latest' }}" >> $GITHUB_ENV
       - name: Debug IMAGE-TAG
-        run: 
-          echo "Using IMAGE-TAG:$IMAGE-TAG"
+        run: echo "Using IMAGE-TAG: $IMAGE-TAG"
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -74,28 +73,29 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: example-node-app
+          IMAGE-TAG: ${{ github.sha || 'latest' }}
         run: |-
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE-TAG .
           docker push $REGISTRY/$REPOSITORY:$IMAGE-TAG  
 
       - name: Deploy docker image to ec2
         env:
-          REGISTRY: ${{steps.login-ecr.outputs.registry}}
-          REPOSITORY: exapmle-node-app
-          IMAGE-TAG: ${{github.sha}}
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: example-node-app  # Fixed typo
+          IMAGE-TAG: ${{ github.sha || 'latest' }}
           AWS_DEFAULT_REGION: us-east-1
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ env.SERVER_PUBLIC_IP}}
+          host: ${{ env.SERVER_PUBLIC_IP }}
           username: ubuntu
-          key: ${{env.SSH_KEY_PRIVATE}}
+          key: ${{ env.SSH_KEY_PRIVATE }}
           envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE-TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
-          scripts: |-
+          script: |-
             sudo apt update
             sudo apt install docker.io -y
             sudo apt install awscli -y
-            sudo ${aws ecr get-login --no-include-email --region us-east-1};
+            sudo $(aws ecr get-login --no-include-email --region us-east-1)
             sudo docker stop myappcontainer || true
             sudo docker rm myappcontainer || true
-            sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE-TAG 
-            sudo docker run -d --name myaoocontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE-TAG 
+            sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE-TAG
+            sudo docker run -d --name myappcontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE-TAG
