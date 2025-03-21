@@ -62,19 +62,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Set IP env var
-        run: echo SERVER_PUBLIC_IP=${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }} >> $GITHUB_ENV
-      - name: login to ecr
+      - name: Set IMAGE-TAG variable
+        run: echo "IMAGE-TAG=${{ github.sha }}" >> $GITHUB_ENV
+      - name: Debug IMAGE-TAG
+        run: echo "Using IMAGE-TAG: $IMAGE-TAG"
+      - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
       - name: Build, push docker image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: example-node-app
-          IMAGE-TAG: ${{ github.sha || 'latest' }}
         run: |-
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE-TAG .
-          docker push $REGISTRY/$REPOSITORY:$IMAGE-TAG    
+          docker push $REGISTRY/$REPOSITORY:$IMAGE-TAG  
       - name: Deploy docker image to ec2
         env:
           REGISTRY: ${{steps.login-ecr.outputs.registry}}
