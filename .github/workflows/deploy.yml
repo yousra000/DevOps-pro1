@@ -1,5 +1,4 @@
-name: CI/CD with Terraform
-
+name: CI/CD with terraform
 on:
   push:
     branches:
@@ -7,7 +6,7 @@ on:
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID}}
   SSH_KEY_PRIVATE: ${{ secrets.AWS_SSH_KEY_PRIVATE }}
   SSH_KEY_PUBLIC: ${{ secrets.AWS_SSH_KEY_PUBLIC }}
   TF_STATE_BUCKET_NAME: ${{ secrets.AWS_TF_STATE_BUCKET_NAME }}
@@ -17,12 +16,12 @@ jobs:
   deploy-infra:
     runs-on: ubuntu-latest
     outputs:
-      SERVER_PUBLIC_IP: ${{ steps.set_ip.outputs.instance_public_ip }}
+      SERVER_PUBLIC_IP: ${{ steps.set_ip.outputs.instance_public_ip}}
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Setup Terraform
+      - name: setup Terraform
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: "1.0.0"
@@ -54,53 +53,49 @@ jobs:
 
       - name: Set output
         id: set_ip
-        run: echo "instance_public_ip=$(terraform output -raw instance_public_ip)" >> $GITHUB_ENV
+        run: |-
+          echo "::set-output name=instance_public_ip::$(terraform output instance_public_ip)"
 
   deploy-app:
     runs-on: ubuntu-latest
     needs: deploy-infra
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v3
-
-      - name: Set IMAGE_TAG variable
-        run: echo "IMAGE_TAG=${GITHUB_SHA:-latest}" >> $GITHUB_ENV
-
-      - name: Debug IMAGE_TAG
-        run: |-
-          echo "Using IMAGE_TAG: $IMAGE_TAG"
-
-      - name: Login to Amazon ECR
+      - name: Set IMAGE-TAG variable
+        run: echo "IMAGE-TAG=latest" >> $GITHUB_ENV
+      - name: Debug IMAGE-TAG
+        run: echo "Using IMAGE-TAG:$IMAGE-TAG"
+      - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build & Push Docker Image
+      - name: Build, push docker image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: example-node-app
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          IMAGE-TAG: latest
         run: |-
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
-          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG  
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE-TAG .
+          docker push $REGISTRY/$REPOSITORY:$IMAGE-TAG  
 
-      - name: Deploy Docker Image to EC2
+      - name: Deploy docker image to ec2
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: example-node-app
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          REPOSITORY: example-node-app  # Fixed typo
+          IMAGE-TAG: latest
           AWS_DEFAULT_REGION: us-east-1
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ env.instance_public_ip }}
+          host: ${{ env.SERVER_PUBLIC_IP }}
           username: ubuntu
           key: ${{ env.SSH_KEY_PRIVATE }}
-          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE_TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
+          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE-TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
           script: |-
             sudo apt update
             sudo apt install docker.io -y
             sudo apt install awscli -y
-            aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin $REGISTRY
+            sudo $(aws ecr get-login --no-include-email --region us-east-1)
             sudo docker stop myappcontainer || true
             sudo docker rm myappcontainer || true
-            sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE_TAG
-            sudo docker run -d --name myappcontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE_TAG
+            sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE-TAG
+            sudo docker run -d --name myappcontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE-TAG
