@@ -62,10 +62,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Set IMAGE-TAG variable
-        run: echo "IMAGE-TAG=latest" >> $GITHUB_ENV
-      - name: Debug IMAGE-TAG
-        run: echo "Using IMAGE-TAG:$IMAGE-TAG"
+      - name: Set IMAGE variable
+        run: echo "IMAGE=latest" >> $GITHUB_ENV
+      - name: Debug IMAGE
+        run: echo "Using IMAGE:$IMAGE"
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -73,23 +73,23 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: example-node-app
-          IMAGE-TAG: latest
+          IMAGE: latest
         run: |-
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE-TAG .
-          docker push $REGISTRY/$REPOSITORY:$IMAGE-TAG  
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE .
+          docker push $REGISTRY/$REPOSITORY:$IMAGE
 
       - name: Deploy docker image to ec2
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: example-node-app  # Fixed typo
-          IMAGE-TAG: latest
+          IMAGE: latest
           AWS_DEFAULT_REGION: us-east-1
         uses: appleboy/ssh-action@master
         with:
           host: ${{ env.SERVER_PUBLIC_IP }}
           username: ubuntu
           key: ${{ env.SSH_KEY_PRIVATE }}
-          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE-TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
+          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
           script: |-
             sudo apt update
             sudo apt install docker.io -y
@@ -97,5 +97,5 @@ jobs:
             sudo $(aws ecr get-login --no-include-email --region us-east-1)
             sudo docker stop myappcontainer || true
             sudo docker rm myappcontainer || true
-            sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE-TAG
-            sudo docker run -d --name myappcontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE-TAG
+            sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE
+            sudo docker run -d --name myappcontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE
