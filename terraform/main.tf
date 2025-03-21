@@ -40,7 +40,7 @@ resource "aws_subnet" "private_subnet" {
 
 # Create security group for EC2 instance
 resource "aws_security_group" "maingroub" {
-  vpc_id = aws_vpc.my_vpc.id  # Ensure it's in the same VPC
+  vpc_id = aws_vpc.my_vpc.id
 
   egress = [
     {
@@ -88,7 +88,7 @@ resource "aws_instance" "ec2" {
   instance_type         = "t2.micro"
   key_name              = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.maingroub.id]
-  subnet_id             = element(aws_subnet.public_subnet.*.id, 0)  # First public subnet
+  subnet_id             = element(aws_subnet.public_subnet.*.id, 0)
 
   connection {
     type        = "ssh"
@@ -115,9 +115,16 @@ resource "aws_key_pair" "deployer" {
   public_key = var.public_key
 }
 
+# Create an ECR repository
+resource "aws_ecr_repository" "devops_repo" {
+  name = "devops-pro1"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
 # Output instance public IP address
 output "instance_public_ip" {
   value     = aws_instance.ec2.public_ip
   sensitive = true
 }
-
