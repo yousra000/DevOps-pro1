@@ -65,7 +65,7 @@ jobs:
       - name: Set IMAGE-TAG variable
         run: echo "IMAGE-TAG=${{ github.sha || 'latest' }}" >> $GITHUB_ENV
       - name: Debug IMAGE-TAG
-        run: echo "Using IMAGE-TAG: $IMAGE-TAG"
+        run: echo "Using IMAGE-TAG:$IMAGE-TAG"
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
