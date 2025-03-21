@@ -69,12 +69,12 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
       - name: Build, push docker image
         env:
-          REGISTRY: ${{steps.login-ecr.outputs.registry}}
-          REPOSITORY: exapmle-node-app
-          IMAGE-TAG: ${{github.sha}}
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: example-node-app
+          IMAGE-TAG: ${{ github.sha || 'latest' }}
         run: |-
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE-TAG .
-          docker push -t $REGISTRY/$REPOSITORY:$IMAGE-TAG 
+          docker push $REGISTRY/$REPOSITORY:$IMAGE-TAG    
       - name: Deploy docker image to ec2
         env:
           REGISTRY: ${{steps.login-ecr.outputs.registry}}
