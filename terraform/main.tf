@@ -89,6 +89,7 @@ resource "aws_instance" "ec2" {
   key_name              = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.maingroub.id]
   subnet_id             = element(aws_subnet.public_subnet.*.id, 0)
+  associate_public_ip_address = true
 
   connection {
     type        = "ssh"
