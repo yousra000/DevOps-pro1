@@ -75,7 +75,7 @@ jobs:
           REPOSITORY: example-node-app
           IMAGE: latest
         run: |-
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE .
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE ./node-app
           docker push $REGISTRY/$REPOSITORY:$IMAGE
 
       - name: Deploy docker image to ec2
