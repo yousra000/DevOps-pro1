@@ -51,17 +51,10 @@ jobs:
         run: terraform apply PLAN
         working-directory: ./terraform
 
-      - name: Get EC2 Public IP
+      - name: Set output
         id: set_ip
-        run: |
-          INSTANCE_IP=$(terraform output -raw instance_public_ip 2>/dev/null || echo "")
-          if [[ -z "$INSTANCE_IP" ]]; then
-            echo "Error: No public IP found!" >&2
-            exit 1
-          fi
-          echo "INSTANCE_PUBLIC_IP=$INSTANCE_IP" >> $GITHUB_ENV
-        working-directory: ./terraform
-      
+        run: |-
+          echo "::set-output name=instance_public_ip::$(terraform output instance_public_ip)"
 
   deploy-app:
     runs-on: ubuntu-latest
