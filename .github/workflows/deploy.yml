@@ -112,7 +112,7 @@ jobs:
             sudo yum install awscli -y
             sudo systemctl start docker
             sudo systemctl enable docker
-            sudo aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin $REGISTRY
+            aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin $REGISTRY
             sudo docker stop myappcontainer || true
             sudo docker rm myappcontainer || true
             sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE
