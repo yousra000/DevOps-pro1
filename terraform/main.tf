@@ -101,10 +101,36 @@ resource "aws_instance" "ec2" {
   }
 }
 
+
+
+# Create an IAM role for EC2 with full access to ECR
+resource "aws_iam_role" "ec2_ecr_auth_role" {
+  name = "ec2-ecr-auth-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Attach the AmazonEC2ContainerRegistryFullAccess policy to the role
+resource "aws_iam_role_policy_attachment" "ec2_ecr_full_access" {
+  role       = aws_iam_role.ec2_ecr_auth_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
+}
+
 # Create an IAM instance profile for EC2
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "ec2_profile"
-  role = "ec2-ecr-auth"
+  role = aws_iam_role.ec2_ecr_auth_role.name
 }
 
 # Create SSH key pair for EC2
