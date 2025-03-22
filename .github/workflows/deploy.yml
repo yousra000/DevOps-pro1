@@ -32,7 +32,7 @@ jobs:
 
       - name: Terraform init 
         id: init
-        run: terraform init -backend-config="bucket=${{env.TF_STATE_BUCKET_NAME}}" -backend-config="region=us-east-1"
+        run: terraform init -backend-config="bucket=engys-bucket" -backend-config="region=us-east-1"
         working-directory: ./terraform
 
       - name: Terraform plan 
@@ -57,7 +57,7 @@ jobs:
     
       - name: Set Server Public IP
         id: pub_ip
-        run: echo "SERVER_PUBLIC_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT # not GITHUB_ENV
+        run: echo "SERVER_PUBLIC_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
         working-directory: ./terraform
     
       - name: Debug SERVER_PUBLIC_IP
@@ -75,10 +75,9 @@ jobs:
       - name: Debug IMAGE
         run: echo "Using IMAGE:$IMAGE"
      
-
-      - name: Debug SERVER_PUBLIC_IP
-        run: echo "SERVER_PUBLIC_IP=${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}"
-
+      - name: Debug SSH Host
+        run: |
+          echo "SSH Host=${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}"
 
       - name: Login to ECR
         id: login-ecr
@@ -92,8 +91,6 @@ jobs:
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE .
           docker push $REGISTRY/$REPOSITORY:$IMAGE
         working-directory: ./node-app
-
-
       - name: Deploy docker image to ec2
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -103,9 +100,9 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}
-          username: ec2-user                                                                  # use the right username for your image        
+          username: ec2-user  
           key: ${{ env.SSH_KEY_PRIVATE }}
-          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION 
+          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
           script: |-
             sudo yum update -y
             sudo yum install docker -y
