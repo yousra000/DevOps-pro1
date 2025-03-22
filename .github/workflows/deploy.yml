@@ -1,5 +1,4 @@
-name: CI/CD with Terraform
-
+name: CI/CD with terraform
 on:
   push:
     branches:
@@ -7,7 +6,7 @@ on:
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID}}
   SSH_KEY_PRIVATE: ${{ secrets.AWS_SSH_KEY_PRIVATE }}
   SSH_KEY_PUBLIC: ${{ secrets.AWS_SSH_KEY_PUBLIC }}
   TF_STATE_BUCKET_NAME: ${{ secrets.AWS_TF_STATE_BUCKET_NAME }}
@@ -17,28 +16,28 @@ jobs:
   deploy-infra:
     runs-on: ubuntu-latest
     outputs:
-      SERVER_PUBLIC_IP: ${{ steps.set_ip.outputs.SERVER_PUBLIC_IP }}
+      SERVER_PUBLIC_IP: ${{ steps.set_ip.outputs.instance_public_ip}}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Setup Terraform
+      - name: setup Terraform
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: "1.0.0"
           terraform_wrapper: false
 
-      - name: Verify Terraform Installation
+      - name: Verify Terraform installation
         run: terraform --version 
 
-      - name: Terraform Init
+      - name: Terraform init 
         id: init
         run: terraform init -backend-config="bucket=engys-bucket" -backend-config="region=us-east-1"
         working-directory: ./terraform
 
-      - name: Terraform Plan
+      - name: Terraform plan 
         id: plan
-        run: |
+        run: |-
           terraform plan \
           -var="region=us-east-1" \
           -var="public_key=$SSH_KEY_PUBLIC" \
@@ -47,21 +46,15 @@ jobs:
           -out=PLAN
         working-directory: ./terraform
 
-      - name: Terraform Apply
-        id: apply
+      - name: Terraform apply
+        id: apply 
         run: terraform apply PLAN
         working-directory: ./terraform
-
+          
       - name: Debug Terraform Output
         run: terraform output
         working-directory: ./terraform
-
-      - name: Set SERVER_PUBLIC_IP
-        id: set_ip
-        run: |
-          echo "SERVER_PUBLIC_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_ENV
-          echo "::set-output name=SERVER_PUBLIC_IP::$(terraform output -raw instance_public_ip)"
-
+      
       - name: Debug SERVER_PUBLIC_IP
         run: echo "SERVER_PUBLIC_IP=${{ env.SERVER_PUBLIC_IP }}"
 
@@ -71,13 +64,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - name: Set IMAGE Variable
+      - name: Set IMAGE variable
         run: echo "IMAGE=latest" >> $GITHUB_ENV
-
       - name: Debug IMAGE
         run: echo "Using IMAGE:$IMAGE"
-
       - name: Debug SSH Host
         run: |
           echo "SSH Host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}"
@@ -85,18 +75,16 @@ jobs:
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build & Push Docker Image
+      - name: Build, push docker image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: devops-pro1
           IMAGE: latest
-        run: |
+        run: |-
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE .
           docker push $REGISTRY/$REPOSITORY:$IMAGE
         working-directory: ./node-app
-
-      - name: Deploy Docker Image to EC2
+      - name: Deploy docker image to ec2
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: devops-pro1
@@ -108,8 +96,7 @@ jobs:
           username: ubuntu
           key: ${{ env.SSH_KEY_PRIVATE }}
           envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
-          script: |
-            echo "Connecting to EC2 at ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}"
+          script: |-
             sudo apt update
             sudo apt install docker.io -y
             sudo apt install awscli -y
