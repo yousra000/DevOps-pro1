@@ -53,6 +53,32 @@ resource "aws_route_table_association" "public_assoc" {
   route_table_id = aws_route_table.public_rt.id
 }
 
+# Create security group for EC2 instance
+resource "aws_security_group" "maingroub" {
+  vpc_id = aws_vpc.my_vpc.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 # Create EC2 instance
 resource "aws_instance" "ec2" {
   ami                   = "ami-08b5b3a93ed654d19"
@@ -72,6 +98,26 @@ resource "aws_instance" "ec2" {
 
   tags = {
     "name" = "DeployVM"
+  }
+}
+
+# Create an IAM instance profile for EC2
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "ec2_profile"
+  role = "ec2-ecr-auth"
+}
+
+# Create SSH key pair for EC2
+resource "aws_key_pair" "deployer" {
+  key_name   = var.key_name
+  public_key = var.public_key
+}
+
+# Create an ECR repository
+resource "aws_ecr_repository" "devops_repo" {
+  name = "devops-pro1"
+  image_scanning_configuration {
+    scan_on_push = true
   }
 }
 
