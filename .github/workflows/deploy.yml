@@ -83,6 +83,7 @@ jobs:
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+
       - name: Build, push docker image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -94,26 +95,40 @@ jobs:
         working-directory: ./node-app
 
 
-      - name: Deploy docker image to ec2
+      - name: Deploy docker image to EC2
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: devops-pro1
           IMAGE: latest
           AWS_DEFAULT_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         uses: appleboy/ssh-action@master
         with:
           host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}
-          username: ec2-user            
-          key: ${{ env.SSH_KEY_PRIVATE }}
-          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION 
+          username: ec2-user
+          key: ${{ secrets.AWS_SSH_KEY_PRIVATE }}
+          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
           script: |-
             sudo yum update -y
-            sudo yum install docker -y
-            sudo yum install awscli -y
+            sudo yum install -y docker awscli
             sudo systemctl start docker
             sudo systemctl enable docker
-            sudo aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin $REGISTRY
+
+            # Export AWS Credentials inside the SSH session
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            export AWS_REGION=us-east-1
+
+            # Login to AWS ECR
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REGISTRY
+
+            # Stop and remove old container if it exists
             sudo docker stop myappcontainer || true
             sudo docker rm myappcontainer || true
+
+            # Pull the latest Docker image from ECR
             sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE
+
+            # Run the Docker container
             sudo docker run -d --name myappcontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE
