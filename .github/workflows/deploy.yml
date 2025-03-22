@@ -51,12 +51,8 @@ jobs:
         run: terraform apply PLAN
         working-directory: ./terraform
           
-      - name: Set output
-        id: set_ip
-        run: echo "SERVER_PUBLIC_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_ENV
-      
       - name: Debug Terraform Output
-        run: terraform output instance_public_ip
+        run: terraform output
         working-directory: ./terraform
 
   deploy-app:
