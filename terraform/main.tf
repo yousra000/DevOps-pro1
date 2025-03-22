@@ -21,65 +21,36 @@ resource "aws_vpc" "my_vpc" {
   enable_dns_hostnames = true
 }
 
+# Create an Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.my_vpc.id
+}
+
 # Create public subnets
 resource "aws_subnet" "public_subnet" {
-  count                   = 2
+  count                   = 1
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = cidrsubnet(aws_vpc.my_vpc.cidr_block, 8, count.index)
-  availability_zone       = element(["us-east-1a", "us-east-1b"], count.index)
+  availability_zone       = element(["us-east-1a"], count.index)
   map_public_ip_on_launch = true
 }
 
-# Create private subnets
-resource "aws_subnet" "private_subnet" {
-  count                   = 2
-  vpc_id                  = aws_vpc.my_vpc.id
-  cidr_block              = cidrsubnet(aws_vpc.my_vpc.cidr_block, 8, count.index + 2)
-  availability_zone       = element(["us-east-1a", "us-east-1b"], count.index)
+# Create a Route Table for Public Subnet
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.my_vpc.id
 }
 
-# Create security group for EC2 instance
-resource "aws_security_group" "maingroub" {
-  vpc_id = aws_vpc.my_vpc.id
+# Add a default route for public internet access
+resource "aws_route" "default_route" {
+  route_table_id         = aws_route_table.public_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.igw.id
+}
 
-  egress = [
-    {
-      cidr_blocks = ["0.0.0.0/0"]
-      description = ""
-      from_port   = 0
-      ipv6_cidr_blocks = []
-      prefix_list_ids = []
-      protocol    = "-1"
-      security_groups = []
-      self        = false
-      to_port     = 0
-    }
-  ]
-
-  ingress = [
-    {
-      cidr_blocks = ["0.0.0.0/0"]
-      description = ""
-      from_port   = 22
-      ipv6_cidr_blocks = []
-      prefix_list_ids = []
-      protocol    = "tcp"
-      security_groups = []
-      self        = false
-      to_port     = 22
-    },
-    {
-      cidr_blocks = ["0.0.0.0/0"]
-      description = ""
-      from_port   = 80
-      ipv6_cidr_blocks = []
-      prefix_list_ids = []
-      protocol    = "tcp"
-      security_groups = []
-      self        = false
-      to_port     = 80
-    }
-  ]
+# Associate the route table with the public subnet
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = element(aws_subnet.public_subnet.*.id, 0)
+  route_table_id = aws_route_table.public_rt.id
 }
 
 # Create EC2 instance
@@ -104,28 +75,7 @@ resource "aws_instance" "ec2" {
   }
 }
 
-# Create an IAM instance profile for EC2
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2_profile"
-  role = "ec2-ecr-auth"
-}
-
-# Create SSH key pair for EC2
-resource "aws_key_pair" "deployer" {
-  key_name   = var.key_name
-  public_key = var.public_key
-}
-
-# Create an ECR repository
-resource "aws_ecr_repository" "devops_repo" {
-  name = "devops-pro1"
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
 # Output instance public IP address
 output "instance_public_ip" {
   value     = aws_instance.ec2.public_ip
-  sensitive = true
 }
