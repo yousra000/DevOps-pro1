@@ -74,6 +74,10 @@ jobs:
         run: echo "IMAGE=latest" >> $GITHUB_ENV
       - name: Debug IMAGE
         run: echo "Using IMAGE:$IMAGE"
+        
+      - name: Debug Terraform Output
+        run: terraform output
+        working-directory: ./terraform
       - name: Debug SSH Host
         run: |
           echo "SSH Host=${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}"
