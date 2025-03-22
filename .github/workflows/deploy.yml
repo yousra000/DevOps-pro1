@@ -102,7 +102,7 @@ jobs:
           host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}
           username: ec2-user  
           key: ${{ env.SSH_KEY_PRIVATE }}
-          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
+          envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,SSH_KEY_PUBLIC
           script: |-
             sudo yum update -y
             sudo yum install docker -y
