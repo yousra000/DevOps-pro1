@@ -53,8 +53,11 @@ jobs:
           
       - name: Set output
         id: set_ip
-        run: |-
-          echo "::set-output name=instance_public_ip::$(terraform output instance_public_ip)"
+        run: echo "SERVER_PUBLIC_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_ENV
+      
+      - name: Debug Terraform Output
+        run: terraform output instance_public_ip
+        working-directory: ./terraform
 
   deploy-app:
     runs-on: ubuntu-latest
@@ -86,7 +89,7 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}
+          host: ${{ env.SERVER_PUBLIC_IP }}
           username: ubuntu
           key: ${{ env.SSH_KEY_PRIVATE }}
           envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
