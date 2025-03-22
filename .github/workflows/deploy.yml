@@ -16,7 +16,7 @@ jobs:
   deploy-infra:
     runs-on: ubuntu-latest
     outputs:
-      SERVER_PUBLIC_IP: ${{ steps.pub_ip.outputs.SERVER_PUBLIC_IP }} 
+      SERVER_PUBLIC_IP: ${{ steps.pub_ip.outputs.SERVER_PUBLIC_IP}}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -57,7 +57,7 @@ jobs:
     
       - name: Set Server Public IP
         id: pub_ip
-        run: echo "::set-output name=SERVER_PUBLIC_IP::$(terraform output -raw instance_public_ip)" 
+        run: echo "SERVER_PUBLIC_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_ENV
         working-directory: ./terraform
     
       - name: Debug SERVER_PUBLIC_IP
@@ -66,6 +66,8 @@ jobs:
 
   deploy-app:
     runs-on: ubuntu-latest
+    outputs:
+      SERVER_PUBLIC_IP: ${{ steps.pub_ip.outputs.SERVER_PUBLIC_IP}}
     needs: deploy-infra
     steps:
       - name: Checkout
@@ -74,15 +76,15 @@ jobs:
         run: echo "IMAGE=latest" >> $GITHUB_ENV
       - name: Debug IMAGE
         run: echo "Using IMAGE:$IMAGE"
-      - name: Terraform Init (Ensure State Access)
-        run: terraform init -backend-config="bucket=engys-bucket" -backend-config="region=us-east-1"
+
+      - name: Set Server Public IP
+        id: pub_ip
+        run: echo "SERVER_PUBLIC_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_ENV
         working-directory: ./terraform
-      - name: Debug Terraform Output
-        run: terraform output
-        working-directory: ./terraform
+
       - name: Debug SSH Host
         run: |
-          echo "SSH Host=${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}"
+          echo "SSH Host=${{ env.SERVER_PUBLIC_IP }}"
 
       - name: Login to ECR
         id: login-ecr
@@ -104,7 +106,7 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}
+          host: ${{ env.SERVER_PUBLIC_IP }}"
           username: ubuntu
           key: ${{ env.SSH_KEY_PRIVATE }}
           envs: SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
