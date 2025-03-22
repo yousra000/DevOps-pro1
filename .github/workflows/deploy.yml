@@ -32,7 +32,7 @@ jobs:
 
       - name: Terraform init 
         id: init
-        run: terraform init -backend-config="bucket=$engys-bucket" -backend-config="region=us-east-1"
+        run: terraform init -backend-config="bucket=engys-bucket" -backend-config="region=us-east-1"
         working-directory: ./terraform
 
       - name: Terraform plan 
